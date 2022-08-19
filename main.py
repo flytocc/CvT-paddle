@@ -194,7 +194,7 @@ def main(args):
     misc.init_distributed_mode(args)
 
     if misc.get_rank() == 0 and args.log_wandb and not args.eval:
-        log_writer = misc.WandbLogger(args, entity=args.wandb_entity, project=args.wandb_project)
+        log_writer = misc.WandbLogger(args, project=args.wandb_project)
     else:
         log_writer = None
 
