@@ -8,7 +8,7 @@ import paddle.nn.functional as F
 from paddle import inference
 from paddle.inference import Config, create_predictor
 
-from util.data import create_transform, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from data import create_transform, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
 def str2bool(v):
@@ -124,18 +124,13 @@ def main(args):
             warmup=num_warmup)
 
     # eval transform
-    mean = args.mean or IMAGENET_DEFAULT_MEAN
-    std = args.std or IMAGENET_DEFAULT_STD
-    interpolation = args.interpolation or 'bicubic'
-
     preprocess = create_transform(
         input_size=args.input_size,
         is_training=False,
-        interpolation=interpolation,
-        mean=mean,
-        std=std,
-        crop_pct=args.crop_pct,
-    )
+        interpolation=args.interpolation or 'bicubic',
+        mean=args.mean or IMAGENET_DEFAULT_MEAN,
+        std=args.std or IMAGENET_DEFAULT_STD,
+        crop_pct=args.crop_pct)
 
     # Inferencing process
     batch_num = args.batch_size

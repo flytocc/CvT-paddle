@@ -1,3 +1,5 @@
+from functools import partial
+
 import paddle
 import paddle.nn as nn
 
@@ -525,8 +527,15 @@ def cvt_13_224x224(**kwargs):
         STRIDE_Q=[1, 1, 1],
     )
     msvit = ConvolutionalVisionTransformer(
+        in_chans=3,
         act_layer=QuickGELU,
+        norm_layer=partial(nn.LayerNorm, epsilon=1e-5),
         init=msvit_spec.get('INIT', 'trunc_norm'),
         spec=msvit_spec,
         **kwargs)
     return msvit
+
+
+def create_model(model, **kwargs):
+    model = eval(model)(**kwargs)
+    return model
