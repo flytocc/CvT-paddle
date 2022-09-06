@@ -92,25 +92,25 @@ class PrefetchLoader:
             self.random_erasing = None
 
     def __iter__(self):
-        stream = paddle.device.cuda.Stream()
+        # stream = paddle.device.cuda.Stream()
         first = True
 
         for next_input, next_target in self.loader:
-            with paddle.device.cuda.stream_guard(stream):
-                if self.fp16:
-                    next_input = paddle.to_tensor(next_input, dtype=paddle.float16)
-                else:
-                    next_input = paddle.to_tensor(next_input, dtype=paddle.float32)
-                next_input = (next_input - self.mean) / self.std
-                if self.random_erasing is not None:
-                    next_input = self.random_erasing(next_input)
+            # with paddle.device.cuda.stream_guard(stream):
+            if self.fp16:
+                next_input = paddle.to_tensor(next_input, dtype=paddle.float16)
+            else:
+                next_input = paddle.to_tensor(next_input, dtype=paddle.float32)
+            next_input = (next_input - self.mean) / self.std
+            if self.random_erasing is not None:
+                next_input = self.random_erasing(next_input)
 
             if not first:
                 yield input, target
             else:
                 first = False
 
-            paddle.device.cuda.current_stream().wait_stream(stream)
+            # paddle.device.cuda.current_stream().wait_stream(stream)
             input = next_input
             target = next_target
 

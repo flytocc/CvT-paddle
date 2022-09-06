@@ -226,11 +226,11 @@ class Attention(nn.Layer):
         k = rearrange(self.proj_k(k), 'b t (h d) -> b h t d', h=self.num_heads)
         v = rearrange(self.proj_v(v), 'b t (h d) -> b h t d', h=self.num_heads)
 
-        attn_score = paddle.einsum('bhlk,bhtk->bhlt', q, k) * self.scale
+        attn_score = (q @ k.transpose([0, 1, 3, 2])) * self.scale
         attn = nn.functional.softmax(attn_score, axis=-1)
         attn = self.attn_drop(attn)
 
-        x = paddle.einsum('bhlt,bhtv->bhlv', attn, v)
+        x = attn @ v
         x = rearrange(x, 'b h t d -> b t (h d)')
 
         x = self.proj(x)
