@@ -2,8 +2,11 @@
 """
 
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
+from functools import partial
 from typing import Callable
+
+import numpy as np
 
 
 class Timer(object):
@@ -11,31 +14,43 @@ class Timer(object):
     A timer which computes the time elapsed since the tic/toc of the timer.
     """
 
-    def __init__(self):
-        super(Timer, self).__init__()
-        self.reset()
+    def __init__(self, window_size=20):
+        self.deque = deque(maxlen=window_size)
+        self.start_time = 0.
+        self.total_time = 0.
+        self.calls = 0
 
     def tic(self):
         # using time.time instead of time.clock because time time.clock
         # does not normalize for multithreading
         self.start_time = time.time()
 
-    def toc(self, average=True):
-        self.diff = time.time() - self.start_time
-        self.total_time += self.diff
+    def toc(self):
+        diff = time.time() - self.start_time
+        self.total_time += diff
         self.calls += 1
-        self.average_time = self.total_time / self.calls
-        return self.average_time if average else self.diff
+        self.deque.append(diff)
+        return diff
 
-    def reset(self):
-        """
-        Reset the timer.
-        """
-        self.start_time = 0.
-        self.diff = 0.
-        self.total_time = 0.
-        self.average_time = 0.
-        self.calls = 0
+    @property
+    def median(self):
+        return np.median(self.deque)
+
+    @property
+    def avg(self):
+        return np.mean(self.deque)
+
+    @property
+    def global_avg(self):
+        return self.total_time / self.calls
+
+    @property
+    def max(self):
+        return max(self.deque)
+
+    @property
+    def value(self):
+        return self.deque[-1]
 
 
 class _DebugTimer(object):
@@ -64,6 +79,7 @@ class _DebugTimer(object):
 
     __TIMER__ = None
     prefix = ""
+    window_size = 0
 
     def __new__(cls, *args, **kwargs):
         if cls.__TIMER__ is None:
@@ -73,10 +89,10 @@ class _DebugTimer(object):
     def __init__(self, num_warmup=0):
         super(_DebugTimer, self).__init__()
         self.num_warmup = num_warmup
-        self.timers = defaultdict(Timer)
         self.context_stacks = []
         self.calls = 0
         self.set_wait(lambda: None)
+        self.set_window_size(self.window_size)
 
     def __getattr__(self, name):
         if name in self.__dict__:
@@ -113,6 +129,12 @@ class _DebugTimer(object):
         assert isinstance(func, Callable)
         self.wait = func
 
+    def set_window_size(self, window_size):
+        assert isinstance(window_size, int)
+        self.window_size = window_size
+        timer_obj = partial(Timer, window_size=self.window_size) if window_size > 0 else Timer
+        self.timers = defaultdict(timer_obj)
+
     def reset_timer(self):
         for timer in self.timers.values():
             timer.reset()
@@ -129,7 +151,7 @@ class _DebugTimer(object):
             raise ValueError(f"Trying to toc a non-existent Timer which is named '{name}'!")
         if self.calls >= self.num_warmup:
             self.wait()
-            return timer.toc(average=False)
+            return timer.toc()
 
     def log(self, logperiod=10, prefix="", log_func=None):
         """
@@ -142,7 +164,7 @@ class _DebugTimer(object):
 
             lines = [prefix or self.prefix]
             for name, timer in self.timers.items():
-                avg_time = timer.average_time
+                avg_time = timer.avg if self.window_size > 0 else timer.global_avg
                 suffix = "s"
                 if avg_time < 0.01:
                     avg_time *= 1000
