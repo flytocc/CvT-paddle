@@ -46,15 +46,15 @@ def rearrange(x, pattern, **axes_lengths):
         h, w = axes_lengths.pop('h', -1), axes_lengths.pop('w', -1)
         return x.transpose([0, 2, 1]).reshape([b, c, h, w])
     if 'b c h w -> b (h w) c' == pattern:
-        b, c, _, _ = x.shape
-        return x.reshape([b, c, -1]).transpose([0, 2, 1])
+        b, c, h, w = x.shape
+        return x.reshape([b, c, h * w]).transpose([0, 2, 1])
     if 'b t (h d) -> b h t d' == pattern:
-        b, t, _ = x.shape
+        b, t, h_d = x.shape
         h = axes_lengths['h']
-        return x.reshape([b, t, h, -1]).transpose([0, 2, 1, 3])
+        return x.reshape([b, t, h, h_d // h]).transpose([0, 2, 1, 3])
     if 'b h t d -> b t (h d)' == pattern:
-        b, _, t, _ = x.shape
-        return x.transpose([0, 2, 1, 3]).reshape([b, t, -1])
+        b, h, t, d = x.shape
+        return x.transpose([0, 2, 1, 3]).reshape([b, t, h * d])
 
     raise NotImplementedError(
         f"Rearrangement '{pattern}' has not been implemented.")
@@ -488,7 +488,7 @@ class ConvolutionalVisionTransformer(nn.Layer):
 
         if self.cls_token:
             x = self.norm(cls_tokens)
-            x = paddle.squeeze(x)
+            x = paddle.squeeze(x, axis=1)
         else:
             x = rearrange(x, 'b c h w -> b (h w) c')
             x = self.norm(x)

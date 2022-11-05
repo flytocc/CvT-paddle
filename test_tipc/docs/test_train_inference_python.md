@@ -8,14 +8,14 @@ Linux端基础训练预测功能测试的主程序为`test_train_inference_pytho
 
 | 算法名称 | 模型名称 | 单机单卡 | 单机多卡 |
 | :----- | :------ | :------ | :----- |
-| PeleeNet | peleenet | 正常训练 | 正常训练 |
+| MobileNeXt | MobileNeXt-1.0 | 正常训练 | 正常训练 |
 
 
 - 推理相关：
 
 | 算法名称 | 模型名称 | device_CPU | device_GPU | batchsize |
-|  :----:   |  :----: |   :----:   |  :----:  |   :----:   |
-|  PeleeNet   |  peleenet |  支持 | 支持 | 1 |
+| :-----: | :----: | :--------: | :--------: | :-------: |
+| MobileNeXt | MobileNeXt-1.0 |  支持 | 支持 | 1 |
 
 
 ## 2. 测试流程
@@ -23,7 +23,7 @@ Linux端基础训练预测功能测试的主程序为`test_train_inference_pytho
 运行环境配置请参考[文档](./install.md)的内容配置TIPC的运行环境。
 
 ### 2.1 安装依赖
-- 安装PaddlePaddle >= 2.2
+- 安装PaddlePaddle == 2.3
 - 安装PaddleClas依赖
     ```
     pip3 install  -r ../requirements.txt
@@ -34,7 +34,7 @@ Linux端基础训练预测功能测试的主程序为`test_train_inference_pytho
     cd AutoLog
     pip3 install -r requirements.txt
     python3 setup.py bdist_wheel
-    pip3 install ./dist/auto_log-1.0.0-py3-none-any.whl
+    pip3 install ./dist/auto_log-*-py3-none-any.whl
     cd ../
     ```
 
@@ -45,9 +45,8 @@ Linux端基础训练预测功能测试的主程序为`test_train_inference_pytho
 
 - 模式1：lite_train_lite_infer，使用少量数据训练，用于快速验证训练到预测的走通流程，不验证精度和速度；
 ```shell
-bash test_tipc/prepare.sh test_tipc/config/PeleeNet/peleenet.txt 'lite_train_lite_infer'
-
-bash test_tipc/test_train_inference_python.sh test_tipc/config/PeleeNet/peleenet.txt 'lite_train_lite_infer''lite_train_lite_infer'
+bash test_tipc/prepare.sh test_tipc/config/MobileNeXt/MobileNeXt-1.0.txt 'lite_train_lite_infer'
+bash test_tipc/test_train_inference_python.sh test_tipc/config/MobileNeXt/MobileNeXt-1.0.txt 'lite_train_lite_infer'
 ```
 
 运行相应指令后，在`test_tipc/output`文件夹下自动会保存运行日志。如'lite_train_lite_infer'模式下，会运行训练+inference的链条，因此，在`test_tipc/output`文件夹有以下文件：
@@ -65,14 +64,25 @@ test_tipc/output/
 
 其中`results_python.log`中包含了每条指令的运行状态，如果运行成功会输出：
 ```
-Run successfully with command - python3 main.py --model=peleenet --aa='' --smoothing=0 --train_interpolation=bilinear --reprob=0 --mixup=0 --cutmix=0 --lr=0.25 --data_path=./dataset/ILSVRC2012/ --cls_label_path_train=./dataset/ILSVRC2012/train_list.txt --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --dist_eval    --output_dir=./test_tipc/output/norm_train_gpus_0_autocast_null/peleenet --epochs=2     --batch_size=8 !
-Run successfully with command - python3 eval.py --model=peleenet --train_interpolation=bilinear --data_path=./dataset/ILSVRC2012/ --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --resume=./test_tipc/output/norm_train_gpus_0_autocast_null/peleenet/checkpoint-latest.pd !
-......
+Run successfully with command - python3 main.py ./dataset/ILSVRC2012/ --cls_label_path_train=./dataset/ILSVRC2012/train_list.txt --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --model=MobileNeXt-1.0 --interpolation=bicubic --use_nesterov --weight_decay=1e-4 --lr=0.1 --min_lr=1e-5 --color_jitter=0.4 --model_ema --use_multi_epochs_loader --experiment .    --output=./test_tipc/output/norm_train_gpus_0_autocast_null/MobileNeXt-1.0 --epochs=2     --batch_size=8   !
+Run successfully with command - python3 eval.py ./dataset/ILSVRC2012/ --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --model=MobileNeXt-1.0 --interpolation=bicubic --resume=./test_tipc/output/norm_train_gpus_0_autocast_null/MobileNeXt-1.0/checkpoint-latest.pd    !
+Run successfully with command - python3 export_model.py --model=MobileNeXt-1.0 --resume=./test_tipc/output/norm_train_gpus_0_autocast_null/MobileNeXt-1.0/checkpoint-latest.pd --output=./test_tipc/output/norm_train_gpus_0_autocast_null!
+Run successfully with command - python3 infer.py --use_gpu=True --use_tensorrt=False --precision=fp32 --model_file=./test_tipc/output/norm_train_gpus_0_autocast_null/model.pdmodel --batch_size=1 --input_file=./dataset/ILSVRC2012/val  --params_file=./test_tipc/output/norm_train_gpus_0_autocast_null/model.pdiparams > ./test_tipc/output/python_infer_gpu_usetrt_False_precision_fp32_batchsize_1.log 2>&1 !
+Run successfully with command - python3 infer.py --use_gpu=True --use_tensorrt=False --precision=fp32 --model_file=./test_tipc/output/norm_train_gpus_0_autocast_null/model.pdmodel --batch_size=2 --input_file=./dataset/ILSVRC2012/val  --params_file=./test_tipc/output/norm_train_gpus_0_autocast_null/model.pdiparams > ./test_tipc/output/python_infer_gpu_usetrt_False_precision_fp32_batchsize_2.log 2>&1 !
+Run successfully with command - python3 -m paddle.distributed.launch --gpus=0,1 main.py ./dataset/ILSVRC2012/ --cls_label_path_train=./dataset/ILSVRC2012/train_list.txt --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --model=MobileNeXt-1.0 --interpolation=bicubic --use_nesterov --weight_decay=1e-4 --lr=0.1 --min_lr=1e-5 --color_jitter=0.4 --model_ema --use_multi_epochs_loader --experiment .   --output=./test_tipc/output/norm_train_gpus_0,1_autocast_null/MobileNeXt-1.0 --epochs=2     --batch_size=8  !
+Run successfully with command - python3 eval.py ./dataset/ILSVRC2012/ --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --model=MobileNeXt-1.0 --interpolation=bicubic --resume=./test_tipc/output/norm_train_gpus_0,1_autocast_null/MobileNeXt-1.0/checkpoint-latest.pd    !
+Run successfully with command - python3 export_model.py --model=MobileNeXt-1.0 --resume=./test_tipc/output/norm_train_gpus_0,1_autocast_null/MobileNeXt-1.0/checkpoint-latest.pd --output=./test_tipc/output/norm_train_gpus_0,1_autocast_null!
+Run successfully with command - python3 infer.py --use_gpu=True --use_tensorrt=False --precision=fp32 --model_file=./test_tipc/output/norm_train_gpus_0,1_autocast_null/model.pdmodel --batch_size=1 --input_file=./dataset/ILSVRC2012/val  --params_file=./test_tipc/output/norm_train_gpus_0,1_autocast_null/model.pdiparams > ./test_tipc/output/python_infer_gpu_usetrt_False_precision_fp32_batchsize_1.log 2>&1 !
+Run successfully with command - python3 infer.py --use_gpu=True --use_tensorrt=False --precision=fp32 --model_file=./test_tipc/output/norm_train_gpus_0,1_autocast_null/model.pdmodel --batch_size=2 --input_file=./dataset/ILSVRC2012/val  --params_file=./test_tipc/output/norm_train_gpus_0,1_autocast_null/model.pdiparams > ./test_tipc/output/python_infer_gpu_usetrt_False_precision_fp32_batchsize_2.log 2>&1 !
 ```
+
 如果运行失败，会输出：
 ```
-Run failed with command - python3 main.py --model=peleenet --aa='' --smoothing=0 --train_interpolation=bilinear --reprob=0 --mixup=0 --cutmix=0 --lr=0.25 --data_path=./dataset/ILSVRC2012/ --cls_label_path_train=./dataset/ILSVRC2012/train_list.txt --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --dist_eval    --output_dir=./test_tipc/output/norm_train_gpus_0_autocast_null/peleenet --epochs=2     --batch_size=8 !
-Run failed with command - python3 eval.py --model=peleenet --train_interpolation=bilinear --data_path=./dataset/ILSVRC2012/ --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --resume=./test_tipc/output/norm_train_gpus_0_autocast_null/peleenet/checkpoint-latest.pd !
+Run failed with command - python3 main.py ./dataset/ILSVRC2012/ --cls_label_path_train=./dataset/ILSVRC2012/train_list.txt --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --model=MobileNeXt-1.0 --interpolation=bicubic --use_nesterov --weight_decay=1e-4 --lr=0.1 --min_lr=1e-5 --color_jitter=0.4 --model_ema --use_multi_epochs_loader --experiment .    --output=./test_tipc/output/norm_train_gpus_0_autocast_null/MobileNeXt-1.0 --epochs=2     --batch_size=8   !
+Run failed with command - python3 eval.py ./dataset/ILSVRC2012/ --cls_label_path_val=./dataset/ILSVRC2012/val_list.txt --model=MobileNeXt-1.0 --interpolation=bicubic --resume=./test_tipc/output/norm_train_gpus_0_autocast_null/MobileNeXt-1.0/checkpoint-latest.pd    !
+Run failed with command - python3 export_model.py --model=MobileNeXt-1.0 --resume=./test_tipc/output/norm_train_gpus_0_autocast_null/MobileNeXt-1.0/checkpoint-latest.pd --output=./test_tipc/output/norm_train_gpus_0_autocast_null!
+Run failed with command - python3 infer.py --use_gpu=True --use_tensorrt=False --precision=fp32 --model_file=./test_tipc/output/norm_train_gpus_0_autocast_null/model.pdmodel --batch_size=1 --input_file=./dataset/ILSVRC2012/val  --params_file=./test_tipc/output/norm_train_gpus_0_autocast_null/model.pdiparams > ./test_tipc/output/python_infer_gpu_usetrt_False_precision_fp32_batchsize_1.log 2>&1 !
+Run failed with command - python3 infer.py --use_gpu=True --use_tensorrt=False --precision=fp32 --model_file=./test_tipc/output/norm_train_gpus_0_autocast_null/model.pdmodel --batch_size=2 --input_file=./dataset/ILSVRC2012/val  --params_file=./test_tipc/output/norm_train_gpus_0_autocast_null/model.pdiparams > ./test_tipc/output/python_infer_gpu_usetrt_False_precision_fp32_batchsize_2.log 2>&1 !
 ......
 ```
 可以很方便的根据`results_python.log`中的内容判定哪一个指令运行错误。
